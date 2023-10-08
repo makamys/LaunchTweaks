@@ -29,9 +29,9 @@ public class TransformerProfiler {
                     FileWriter fw = null;
                     try {
                         fw = new FileWriter(new File(Launch.minecraftHome, "transformer_profiler.csv"));
-                        fw.write("Transformer,Total time (ms)\n");
+                        fw.write("Class,Name,Total time (ms)\n");
                         for(Entry<IClassTransformer, Long> entry : times.entrySet()) {
-                            fw.write(entry.getKey().getClass().getCanonicalName() + "," + (entry.getValue() / 1000000) + "\n");
+                            fw.write(entry.getKey().getClass().getCanonicalName() + "," + entry.getKey() + "," + (entry.getValue() / 1000000) + "\n");
                         }
                     } catch(IOException e) {
                         System.err.println("Failed to write transformer profiler results");
