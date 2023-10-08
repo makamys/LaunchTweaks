@@ -6,10 +6,14 @@ plugins {
 
 repositories {
     mavenCentral()
+	maven {
+		name = 'sponge'
+		url = 'https://repo.spongepowered.org/maven/'
+	}
 }
 
 shadowJar {
-    relocate 'org.objectweb.asm', 'io.github.makamys.stallman.repackage.org.objectweb.asm'
+    relocate 'org.objectweb.asm', 'io.github.makamys.launchtweaks.repackage.org.objectweb.asm'
     configurations = [project.configurations.shadow]
 }
 
@@ -21,13 +25,14 @@ dependencies {
     shadow "org.ow2.asm:asm-tree:$asmVersion"
     shadow "org.ow2.asm:asm-commons:$asmVersion"
     shadow "org.ow2.asm:asm-util:$asmVersion"
+    compileOnly "net.minecraft:launchwrapper:1.12"
 }
 
 jar {
     manifest {
         attributes (
-			'Premain-Class': 'io.github.makamys.stallman.StallmanAgent',
-			'Agent-Class': 'io.github.makamys.stallman.StallmanAgent',
+			'Premain-Class': 'io.github.makamys.launchtweaks.LaunchTweaksAgent',
+			'Agent-Class': 'io.github.makamys.launchtweaks.LaunchTweaksAgent',
 			'Can-Redefine-Classes': 'true',
 			'Can-Retransform-Classes': 'true',
         )
