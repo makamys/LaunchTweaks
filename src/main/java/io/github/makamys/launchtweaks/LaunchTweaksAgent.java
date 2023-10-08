@@ -47,7 +47,7 @@ public class LaunchTweaksAgent {
         if(LaunchTweaksAgent.instrumentation != null) {
             return;
         }
-        log("Initializing LaunchTweaksAgent");
+        log("Initializing LaunchTweaks agent");
         LaunchTweaksAgent.instrumentation = instrumentation;
         
         instrumentation.addTransformer(new LaunchTransformer());
