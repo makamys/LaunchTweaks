@@ -1,10 +1,7 @@
 package io.github.makamys.launchtweaks;
 
-import static org.objectweb.asm.Opcodes.*;
-
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -13,20 +10,15 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.InsnList;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
-import org.objectweb.asm.tree.VarInsnNode;
+
+import io.github.makamys.launchtweaks.modules.transformerprofiler.TransformerProfiler;
 
 public class LaunchTweaksAgent {
     private static Instrumentation instrumentation;
@@ -34,6 +26,8 @@ public class LaunchTweaksAgent {
     private static final boolean debug = Boolean.parseBoolean(System.getProperty("launchTweaks.debug", "false"));
     private static final File LOG_FILE = new File("LaunchTweaks.log");
     private static boolean hasWritten = false;
+    
+    private static List<IModule> modules = new ArrayList<>();
 
     public static void premain(final String agentArgs, final Instrumentation instrumentation) {
         start(agentArgs, instrumentation);
@@ -50,11 +44,40 @@ public class LaunchTweaksAgent {
         log("Initializing LaunchTweaks agent");
         LaunchTweaksAgent.instrumentation = instrumentation;
         
+        String[] args = agentArgs == null ? new String[0] : agentArgs.split(",");
+        applyOptions(parseOptions(args));
+        
+        log("Initialized with " + modules.size() + " module" + pluralSuffix(modules.size()));
+        
         instrumentation.addTransformer(new LaunchTransformer());
     }
-
-    static void log(String msg) {
-        System.out.println("[LaunchTweaks] " + msg);
+    
+    private static Map<String, String> parseOptions(String[] args) {
+        Map<String, String> options = new HashMap<>();
+        for(int i = 0; i < args.length; i++) {
+            String[] kv = args[i].split("=");
+            String k = kv[0];
+            String v = kv.length > 1 ? kv[1] : "";
+            options.put(k, v);
+        }
+        return options;
+    }
+    
+    private static void applyOptions(Map<String, String> opts) {
+        debugLog("Options: " + opts);
+        
+        addModule(TransformerProfiler.create(opts));
+    }
+    
+    private static void addModule(IModule module) {
+        if(module != null) {
+            debugLog("Adding module " + module.getClass().getName());
+            modules.add(module);
+        }
+    }
+    
+    private static void log(String msg, String level) {
+        System.out.println("[" + level + "] [LaunchTweaks] " + msg);
         try (FileWriter out = new FileWriter(LOG_FILE, hasWritten)){
             out.write(msg + "\n");
             out.flush();
@@ -64,64 +87,65 @@ public class LaunchTweaksAgent {
         }
     }
 
+    public static void log(String msg) {
+        log(msg, " INFO");
+    }
+
+    public static void debugLog(String msg) {
+        if(debug) {
+            log(msg, "DEBUG");
+        }
+    }
+    
+    static String pluralSuffix(int n) {
+        return n == 1 ? "" : "s";
+    }
+
     private static class LaunchTransformer implements ClassFileTransformer {
+        List<IModule> transformationWanters = new ArrayList<>();
+        
         @Override
         public byte[] transform(final ClassLoader loader, final String className,
                                 final Class<?> classBeingRedefined,
                                 final ProtectionDomain protectionDomain,
                                 byte[] classfileBuffer) throws IllegalClassFormatException {
-            if(className.equals("net/minecraft/launchwrapper/LaunchClassLoader")) {
-                classfileBuffer = transformClass(className, classfileBuffer);
-            }
-            return classfileBuffer;
-        }
-        
-        /**
-         * <pre>
-         * private byte[] runTransformers(final String name, final String transformedName, byte[] basicClass) {
-         * ...
-         * +   TransformerProfiler.preTransform(name, transformedName, transformer);
-         *     basicClass = transformer.transform(name, transformedName, basicClass);
-         * +   TransformerProfiler.postTransform(name, transformedName, transformer);
-         * ...
-         * }
-         * </pre>
-         */
-        private static byte[] transformClass(String name, byte[] bytes) {
-            log("Transforming " + name);
-            
-            if(debug) {
-                dumpBytes(name, bytes, true);
-            }
-
-            ClassNode classNode = new ClassNode();
-            ClassReader classReader = new ClassReader(bytes);
-            classReader.accept(classNode, 0);
-            for(MethodNode m : classNode.methods) {
-                if(m.name.equals("runTransformers")) {
-                    for(AbstractInsnNode node : m.instructions) {
-                        if(node.getOpcode() == Opcodes.INVOKEINTERFACE) {
-                            MethodInsnNode methodNode = (MethodInsnNode)node;
-                            if(methodNode.owner.equals("net/minecraft/launchwrapper/IClassTransformer") && methodNode.name.equals("transform") && methodNode.desc.equals("(Ljava/lang/String;Ljava/lang/String;[B)[B")) {
-                                log("Injecting TransformerProfiler call before and after IClassTransformer#transform call!");
-                                m.instructions.insertBefore(methodNode, createCall(true));
-                                m.instructions.insert(methodNode, createCall(false));
-                            }
-                        }
+            try {
+                for(IModule module : modules) {
+                    if(module.wantsToTransform(className)) {
+                        transformationWanters.add(module);
                     }
                 }
+                if(!transformationWanters.isEmpty()) {
+                    log("Transforming " + className + " with " + transformationWanters.size() + " transformer" + pluralSuffix(transformationWanters.size()));
+                    
+                    if(debug) {
+                        dumpBytes(className, classfileBuffer, true);
+                    }
+                    
+                    ClassNode classNode = new ClassNode();
+                    ClassReader classReader = new ClassReader(classfileBuffer);
+                    classReader.accept(classNode, 0);
+                    
+                    for(IModule module : transformationWanters) {
+                        debugLog("Running transformer " + module.getClass().getName());
+                        module.transform(classNode);
+                    }
+                    
+                    ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+                    classNode.accept(writer);
+                    
+                    classfileBuffer = writer.toByteArray();
+                    
+                    if(debug) {
+                        dumpBytes(className, classfileBuffer, false);
+                    }
+                    
+                    return classfileBuffer;
+                }
+            } finally {
+                transformationWanters.clear();
             }
-
-            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-            classNode.accept(writer);
-            
-            bytes = writer.toByteArray();
-            
-            if(debug) {
-                dumpBytes(name, bytes, false);
-            }
-            
-            return bytes;
+            return classfileBuffer;
         }
         
         private static void dumpBytes(String name, byte[] bytes, boolean b) {
@@ -130,16 +154,6 @@ public class LaunchTweaksAgent {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }
-
-        private static InsnList createCall(boolean pre) {
-            InsnList list = new InsnList();
-            list.add(new VarInsnNode(ALOAD, 1)); // name
-            list.add(new VarInsnNode(ALOAD, 2)); // transformedName
-            list.add(new VarInsnNode(ALOAD, 5)); // transformer
-            list.add(new MethodInsnNode(INVOKESTATIC, "io/github/makamys/launchtweaks/TransformerProfiler", pre ? "preTransform" : "postTransform", "(Ljava/lang/String;Ljava/lang/String;Lnet/minecraft/launchwrapper/IClassTransformer;)V"));
-            
-            return list;
         }
     }
 }

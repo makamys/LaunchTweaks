@@ -1,4 +1,4 @@
-package io.github.makamys.launchtweaks;
+package io.github.makamys.launchtweaks.modules.transformerprofiler;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -6,13 +6,11 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.Launch;
 
-public class TransformerProfiler {
-
+public class TransformerProfilerHooks {
     private static Map<IClassTransformer, Long> times = new HashMap<IClassTransformer, Long>();
     
     private static long transformStartTime = -1;
@@ -56,5 +54,4 @@ public class TransformerProfiler {
         long transformTime = System.nanoTime() - transformStartTime;
         times.put(transformer, times.getOrDefault(transformer, 0L) + transformTime);
     }
-
 }
