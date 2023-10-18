@@ -18,6 +18,7 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
 
+import io.github.makamys.launchtweaks.modules.hacknatives.HackNatives;
 import io.github.makamys.launchtweaks.modules.staller.Staller;
 import io.github.makamys.launchtweaks.modules.transformerprofiler.TransformerProfiler;
 
@@ -69,6 +70,7 @@ public class LaunchTweaksAgent {
         
         addModule(TransformerProfiler.create(opts));
         addModule(Staller.create(opts));
+        addModule(HackNatives.create(opts));
     }
     
     private static void addModule(IModule module) {
