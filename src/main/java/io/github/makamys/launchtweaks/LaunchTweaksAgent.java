@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
@@ -49,7 +51,7 @@ public class LaunchTweaksAgent {
         String[] args = agentArgs == null ? new String[0] : agentArgs.split(",");
         applyOptions(parseOptions(args));
         
-        log("Initialized with " + modules.size() + " module" + pluralSuffix(modules.size()));
+        log("Initialized with " + modules.size() + " module" + pluralSuffix(modules.size()) + ": " + modules.stream().map(x -> x.getClass().getSimpleName()).collect(Collectors.toList()));
         
         instrumentation.addTransformer(new LaunchTransformer());
     }
