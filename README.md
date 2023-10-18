@@ -39,3 +39,7 @@ It may also be useful for people stuck with ForgeGradle suffering from https://g
 Arguments:
 - `dirs`: Comma-separated list of directories to add to the native library path.
   - Example: `some/relative/path:/some/absolute/path`
+
+## License
+
+This project is licensed under the [Unlicense](UNLICENSE).
