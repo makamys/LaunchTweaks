@@ -1,6 +1,6 @@
 # LaunchTweaks
 
-A Java agent that modifies to earliest part of an application, the launch process. It mainly targets LaunchWrapper (used by Minecraft versions prior to `[idk, 1.13 or something?]`), but some its features will work with any Java application.
+A Java agent that modifies the earliest part of an application's lifetime, the launch process. It mainly targets LaunchWrapper (used by Minecraft versions prior to `[idk, 1.13 or something?]`), but some of its features will work with any Java application.
 
 ## Usage
 
