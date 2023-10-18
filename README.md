@@ -29,3 +29,13 @@ Arguments:
   - Example: `stall.countdown=5`
 - `target`: Set the main method(s) explicitly instead of having them be automatically detected.
   - Example: `stall.target=example.org.Main#main([Ljava/lang/String;)V,example.org.Main2`
+
+### `hackNatives`
+
+Implements ForgeGradle's native library hack. This allows RFG to be used seamlessly in Eclipse (which RFG does not generate run configurations for).
+
+It may also be useful for people stuck with ForgeGradle suffering from https://github.com/MinecraftForge/ForgeGradle/issues/652, since it backports the new version of the hack.
+
+Arguments:
+- `dirs`: Comma-separated list of directories to add to the native library path.
+  - Example: `some/relative/path:/some/absolute/path`
